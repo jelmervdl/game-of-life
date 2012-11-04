@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>GoL</title>
+		<style>
+			html, body {
+				margin: 0;
+				padding: 0;
+				height: 100%;
+			}
+
+			#diffsize {
+				position: absolute;
+				top: 0;
+				right: 0;
+				width: 50px;
+				background: black;
+				color: white;
+				text-align: right;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas id="gol"></canvas>
+		<div id="diffsize"></div>
+		<script>
+			"use strict";
+
+			function Renderer(g, sw, sh)
+			{
+				this.sw = sw;
+				this.sh = sh;
+				this.g = g;
+				this.queue = [];
+			}
+
+			Renderer.prototype.queueRenderState = function(state)
+			{
+				var self = this;
+
+				this.queue.push(function() {
+					self.renderState(state);
+				});
+
+				this.redraw();
+			}
+
+			Renderer.prototype.queueRenderDiff = function(diff)
+			{
+				var self = this;
+
+				this.queue.push(function() {
+					self.renderDiff(diff);
+				});
+
+				this.redraw()
+			}
+
+			Renderer.prototype.redraw = function()
+			{
+				var self = this;
+
+				webkitRequestAnimationFrame(function() {
+					self.work();
+				});
+			}
+
+			Renderer.prototype.work = function()
+			{
+				while (this.queue.length > 0)
+					this.queue.shift().apply(null);
+			}
+
+			Renderer.prototype.renderState = function(state)
+			{
+				this.g.fillStyle = 'white';
+				this.g.fillRect(0, 0, this.sw * state.width, this.sh * state.height);
+
+				this.g.fillStyle = '#ccc';
+
+				for (var i = 0; i < state.width; ++i)
+					for (var j = 0; j < state.height; ++j)
+						if (isAlive(state, i, j))
+							this.g.fillRect(i * this.sw, j * this.sh, this.sw, this.sh);
+			}
+
+			Renderer.prototype.renderDiff = function(diff)
+			{
+				logDiffSize(diff.length);
+
+				for (var i = 0; i < diff.length; ++i)
+				{
+					this.g.fillStyle = diff[i].alive ? '#ccc' : '#fff';
+					this.g.fillRect(diff[i].x * this.sw, diff[i].y * this.sh, this.sw, this.sh);
+				}
+			}
+
+			function logDiffSize(size) {
+				document.getElementById('diffsize').innerHTML = size;
+			}
+
+			function isAlive(state, x, y)
+			{
+				return state.buffer[y * state.width + x];
+			}
+
+			function init()
+			{
+				var thread = new Worker('gol.js'),
+					canvas = document.getElementById('gol'),
+					g = canvas.getContext('2d'),
+					renderer = new Renderer(g, 2, 2),
+					active = true;
+
+				canvas.width = document.body.clientWidth;
+				canvas.height = document.body.clientHeight;
+
+				var init = function() {
+					thread.postMessage({
+					'command': 'reset',
+					'width': canvas.width / 2 | 0,
+					'height': canvas.height / 2 | 0});
+				};
+
+				var next = function() {
+					thread.postMessage({
+						'command': 'next'
+					});
+				}
+
+				window.onfocus = function() {
+					active = true;
+					next();
+				};
+
+				window.onblur = function() {
+					active = false;
+				}
+
+				thread.onmessage = function(event) {
+					switch (event.data.type)
+					{
+						case 'state':
+							if (active) next();
+							renderer.queueRenderState(event.data.state);
+							break;
+
+						case 'diff':
+							if (active) next();
+							renderer.queueRenderDiff(event.data.diff);
+							break;
+					}
+				}
+
+				init();
+			}
+
+			init();
+
+			</script>
+		</script>
+	</body>
+</html>
