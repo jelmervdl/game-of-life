@@ -24,17 +24,17 @@
 				this.buffer = new Array(width * height);
 			}
 
-			GameState.prototype.getPosition = function(i)
-			{
-				return {
-					'x': i % this.width,
-					'y': Math.floor(i / this.width)
-				};
-			}
-
 			GameState.prototype.isAlive = function(n)
 			{
 				return this.buffer[n] === true;
+			}
+
+			GameState.prototype.willLive = function(i)
+			{
+				var n = this.countLivingNeighbours(i),
+					wasAlive = this.isAlive(i);
+				
+				return (wasAlive && n === 2) || n === 3;
 			}
 
 			GameState.prototype.countLivingNeighbours = function(i)
@@ -45,14 +45,14 @@
 					y = Math.floor(i / w),
 					n = 0;
 
-				if (x > 0 && y > 0 && this.isAlive(i - this.width - 1)) n++;
-				if (         y > 0 && this.isAlive(i - this.width    )) n++;
-				if (x < w && y > 0 && this.isAlive(i - this.width + 1)) n++;
-				if (x > 0          && this.isAlive(i              - 1)) n++;
-				if (x < w          && this.isAlive(i              + 1)) n++;
-				if (x > 0 && y < h && this.isAlive(i + this.width - 1)) n++;
-				if (         y < h && this.isAlive(i + this.width    )) n++;
-				if (x < w && y < h && this.isAlive(i + this.width + 1)) n++;
+				if (x > 0 && y > 0 && this.isAlive(i - 1 - this.width)) n++;
+				if (         y > 0 && this.isAlive(i     - this.width)) n++;
+				if (x < w && y > 0 && this.isAlive(i + 1 - this.width)) n++;
+				if (x > 0          && this.isAlive(i - 1             )) n++;
+				if (x < w          && this.isAlive(i + 1             )) n++;
+				if (x > 0 && y < h && this.isAlive(i - 1 + this.width)) n++;
+				if (         y < h && this.isAlive(i     + this.width)) n++;
+				if (x < w && y < h && this.isAlive(i + 1 + this.width)) n++;
 
 				return n;
 			}
@@ -70,9 +70,8 @@
 
 				for (var i = 0; i < w * h; ++i)
 				{
-					var n = this.countLivingNeighbours(i),
-						wasAlive = this.isAlive(i),
-						isAlive = (wasAlive && n === 2) || n === 3;
+					var isAlive = this.willLive(i),
+						wasAlive = this.isAlive(i);
 
 					if (wasAlive !== isAlive)
 						diff.push({'i': i, 'alive': isAlive});
@@ -93,39 +92,109 @@
 					this.setAlive(i, Math.random() > 0.8);
 			}
 
+			GameState.prototype.getPosition = function(i)
+			{
+				return {
+					'x': i % this.width,
+					'y': Math.floor(i / this.width)
+				};
+			}
+
 			GameState.prototype.render = function(g, w, h)
 			{
-				var cw = Math.round(w / this.width),
-					ch = Math.round(h / this.height);
-
 				g.fillStyle = 'white';
 				g.fillRect(0, 0, w, h);
 
 				g.fillStyle = '#ccc';
 
 				for (var i = 0; i < this.width * this.height; ++i)
-				{
 					if (this.isAlive(i))
-					{
-						var pos = this.getPosition(i);
-						g.fillRect(pos.x * cw, pos.y * ch, cw, ch);
-					}
-				}
+						this.renderCell(g, i, w, h);
 			}
 
 			GameState.prototype.renderDiff = function(g, diff, w, h)
 			{
-				var cw = Math.round(w / this.width),
-					ch = Math.round(h / this.height);
-
 				for (var i = 0; i < diff.length; ++i)
 				{
-					var cell = diff[i],
-						pos = this.getPosition(cell.i);
-
-					g.fillStyle = cell.alive ? '#ccc' : 'white';
-					g.fillRect(pos.x * cw, pos.y * ch, cw, ch);
+					g.fillStyle = diff[i].alive ? '#ccc' : 'white';
+					this.renderCell(g, diff[i].i, w, h);
 				}			
+			}
+
+			GameState.prototype.renderCell = function(g, i, w, h)
+			{
+				var cw = Math.round(w / this.width),
+					ch = Math.round(h / this.height),
+					p = this.getPosition(i);
+
+				g.fillRect(p.x * cw, p.y * ch, cw, ch);
+			}
+
+			/* Hexagon modus */
+			var Hexagon = GameState;
+
+			Hexagon.prototype.countLivingNeighbours = function(i)
+			{
+				var w = this.width,
+					h = this.height,
+					x = i % w,
+					y = Math.floor(i / w),
+					n = 0;
+
+				if (x < w          && this.isAlive(i + 1             )) n++; //  1,  0
+				if (x > 0          && this.isAlive(i - 1             )) n++; // -1,  0
+				
+				if (y % 2 == 0)
+				{
+					if (x > 0 && y > 0 && this.isAlive(i - 1 - this.width)) n++; // -1, -1
+					if (         y > 0 && this.isAlive(i     - this.width)) n++; //  0, -1
+					if (x > 0 && y < h && this.isAlive(i - 1 + this.width)) n++; // -1,  1
+					if (         y < h && this.isAlive(i     + this.width)) n++; //  0,  1
+				}
+				else
+				{
+					if (         y > 0 && this.isAlive(i     - this.width)) n++; //  0, -1
+					if (x < w && y > 0 && this.isAlive(i + 1 - this.width)) n++; //  1, -1
+					if (         y < h && this.isAlive(i     + this.width)) n++; //  0,  1
+					if (x < w && y < h && this.isAlive(i + 1 + this.width)) n++; //  1,  1
+				}
+				
+				return n;
+			}
+
+			Hexagon.prototype.willLive = function(i)
+			{
+				var n = this.countLivingNeighbours(i),
+					wasAlive = this.isAlive(i);
+				
+				return (wasAlive && n === 2) || n === 3;
+			}
+
+			Hexagon.prototype.renderCell = function(g, i, w, h)
+			{
+				var c = Math.min(
+						w / (2.0 * Math.sin(45) * (this.width + .5)), // c calculated using width
+						h / (1.5 * this.height + 0.5) // c calculated using height
+					),
+					a = .5 * c,
+					b = Math.sin(45) * c,
+					p = this.getPosition(i),
+					x = p.x * 2 * b + (p.y % 2) * b,
+					y = p.y * 3 * a;
+
+				g.beginPath();
+				g.moveTo(x + 0, y + a + c);
+				g.lineTo(x + 0, y + a);
+				g.lineTo(x + b, y + 0);
+				g.lineTo(x + 2*b, y + a);
+				g.lineTo(x + 2*b, y + a + c);
+				g.lineTo(x + b, y + 2*c);
+				g.lineTo(x + 0, y + a + c);
+				g.closePath();
+				g.fill();
+
+				g.strokeStyle = 'black';
+				// g.stroke();
 			}
 
 			function init()
@@ -152,7 +221,7 @@
 					webkitRequestAnimationFrame(renderState);
 				}
 
-				state = new GameState(canvas.width / sx | 0, canvas.height / sy | 0);
+				state = new Hexagon(canvas.width / sx | 0, canvas.height / sy | 0);
 				state.randomize();
 
 				window.state = state;
