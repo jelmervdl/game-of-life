@@ -132,15 +132,22 @@
 				var canvas = document.getElementById('gol'),
 					g = canvas.getContext('2d'),
 					state,
-					sx = 2, sy = 2;
+					sx = 10, sy = 10,
+					diff = null;
 
 				canvas.width = document.body.clientWidth;
 				canvas.height = document.body.clientHeight;
 
-				var renderState = function() {
-					var diff = state.next();
-					renderDiff(g, diff, sx, sy);
+				setInterval(function() {
+					diff = state.next();
 					state.apply(diff);
+				}, 100);
+
+				var renderState = function() {
+					if (diff)
+						state.renderDiff(g, diff, sx, sy);
+
+					diff = null;
 					webkitRequestAnimationFrame(renderState);
 				}
 
