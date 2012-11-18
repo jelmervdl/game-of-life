@@ -15,12 +15,10 @@
 		<script>
 			"use strict";
 
-			function GameState(width, height, cellWidth, cellHeight)
+			function GameState(width, height)
 			{
 				this.width = width;
 				this.height = height;
-				this.cellWidth = cellWidth;
-				this.cellHeight = cellHeight;
 				// this.buffer = new ArrayBuffer(Math.ceil((this.width * this.height) / 8));
 				// this.view = new Int8Array(this.buffer);
 				this.buffer = new Array(width * height);
@@ -71,9 +69,11 @@
 
 			GameState.prototype.next = function()
 			{
-				var diff = [];
+				var w = this.width,
+					h = this.height,
+					diff = [];
 
-				for (var i = 0; i < this.width * this.height; ++i)
+				for (var i = 0; i < w * h; ++i)
 				{
 					var n = this.countLivingNeighbours(i),
 						wasAlive = this.isAlive(i),
@@ -98,10 +98,10 @@
 					this.setAlive(i, Math.random() > 0.8);
 			}
 
-			GameState.prototype.render = function(g)
+			GameState.prototype.render = function(g, cw, ch)
 			{
 				g.fillStyle = 'white';
-				g.fillRect(0, 0, this.cellWidth * this.width, this.cellHeight * this.height);
+				g.fillRect(0, 0, cw * this.width, ch * this.height);
 
 				g.fillStyle = '#ccc';
 
@@ -110,12 +110,12 @@
 					if (this.isAlive(i))
 					{
 						var pos = this.getPosition(i);
-						g.fillRect(pos.x * this.cellWidth, pos.y * this.cellHeight, this.cellWidth, this.cellHeight);
+						g.fillRect(pos.x * cw, pos.y * ch, cw, ch);
 					}
 				}
 			}
 
-			GameState.prototype.renderDiff = function(g, diff)
+			GameState.prototype.renderDiff = function(g, diff, cw, ch)
 			{
 				for (var i = 0; i < diff.length; ++i)
 				{
@@ -123,7 +123,7 @@
 						pos = this.getPosition(cell.i);
 
 					g.fillStyle = cell.alive ? '#ccc' : 'white';
-					g.fillRect(pos.x * this.cellWidth, pos.y * this.cellHeight, this.cellWidth, this.cellHeight);
+					g.fillRect(pos.x * cw, pos.y * ch, cw, ch);
 				}			
 			}
 
@@ -131,9 +131,8 @@
 			{
 				var canvas = document.getElementById('gol'),
 					g = canvas.getContext('2d'),
-					sx = 10,
-					sy = 10,
 					state,
+					sx = 10, sy = 10,
 					diff = null;
 
 				canvas.width = document.body.clientWidth;
@@ -146,18 +145,18 @@
 
 				var renderState = function() {
 					if (diff)
-						state.renderDiff(g, diff);
+						state.renderDiff(g, diff, sx, sy);
 
 					diff = null;
 					webkitRequestAnimationFrame(renderState);
 				}
 
-				state = new GameState(canvas.width / sx | 0, canvas.height / sy | 0, sx, sy);
+				state = new GameState(canvas.width / sx | 0, canvas.height / sy | 0);
 				state.randomize();
 
 				window.state = state;
 
-				state.render(g);
+				state.render(g, sx, sy);
 
 				webkitRequestAnimationFrame(renderState);
 			}
