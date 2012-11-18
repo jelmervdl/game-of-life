@@ -188,6 +188,12 @@
 				return (wasAlive && (n === 2 || n === 3)) || n === 4;
 			}
 
+			Hexagon.prototype.randomize = function()
+			{
+				for (var i = 0; i < this.width * this.height; ++i)
+					this.setAlive(i, Math.random() > 0.5);
+			}
+
 			Hexagon.prototype.renderCell = function(g, i, w, h)
 			{
 				var c = Math.min(
