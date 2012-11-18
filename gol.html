@@ -24,23 +24,47 @@
 				this.buffer = new Array(width * height);
 			}
 
-			GameState.prototype.isAlive = function(x, y)
+			GameState.prototype.getIndex = function(x, y)
 			{
-				var offset = y * this.width + x;
-
-				// return this.view[offset / 8 | 0] & (1 << offset % 8);
-				return this.buffer[offset] == true;
+				return y * this.width + x;
 			}
 
-			GameState.prototype.setAlive = function(x, y, alive)
+			GameState.prototype.getPosition = function(i)
 			{
-				var offset = y * this.width + x;
+				return {
+					'x': i % this.width,
+					'y': Math.floor(i / this.width)
+				};
+			}
 
-				// if (alive)
-				// 	this.view[offset / 8 | 0] &= (1 << offset % 8);
-				// else
-				// 	this.view[offset / 8 | 0] ^= (1 << offset % 8);
-				this.buffer[offset] = alive;
+			GameState.prototype.isAlive = function(n)
+			{
+				return this.buffer[n] === true;
+			}
+
+			GameState.prototype.countLivingNeighbours = function(i)
+			{
+				var w = this.width,
+					h = this.height,
+					x = i % w,
+					y = Math.floor(i / w),
+					n = 0;
+
+				if (x>0 && y>0 && this.isAlive(this.getIndex(x-1, y-1))) n++;
+				if (       y>0 && this.isAlive(this.getIndex(x  , y-1))) n++;
+				if (x<w && y>0 && this.isAlive(this.getIndex(x+1, y-1))) n++;
+				if (x>0        && this.isAlive(this.getIndex(x-1, y  ))) n++;
+				if (x<w        && this.isAlive(this.getIndex(x+1, y  ))) n++;
+				if (x>0 && y<h && this.isAlive(this.getIndex(x-1, y+1))) n++;
+				if (       y<h && this.isAlive(this.getIndex(x  , y+1))) n++;
+				if (x<w && y<h && this.isAlive(this.getIndex(x+1, y+1))) n++;
+
+				return n;
+			}
+
+			GameState.prototype.setAlive = function(n, alive)
+			{
+				this.buffer[n] = alive;
 			}
 
 			GameState.prototype.next = function()
@@ -49,25 +73,14 @@
 					h = this.height,
 					diff = [];
 
-				for (var i = 0; i < w; ++i)
+				for (var i = 0; i < w * h; ++i)
 				{
-					for (var j = 0; j < h; ++j)
-					{
-						var n = 0;
-						if (i>0 && j>0 && this.isAlive(i-1, j-1)) n++;
-						if (       j>0 && this.isAlive(i  , j-1)) n++;
-						if (i<w && j>0 && this.isAlive(i+1, j-1)) n++;
-						if (i>0        && this.isAlive(i-1, j  )) n++;
-						if (i<w        && this.isAlive(i+1, j  )) n++;
-						if (i>0 && j<h && this.isAlive(i-1, j+1)) n++;
-						if (       j<h && this.isAlive(i  , j+1)) n++;
-						if (i<w && j<h && this.isAlive(i+1, j+1)) n++;
+					var n = this.countLivingNeighbours(i),
+						wasAlive = this.isAlive(i),
+						isAlive = (wasAlive && n === 2) || n === 3;
 
-						var alive = (this.isAlive(i, j) && n == 2) || n == 3;
-
-						if (this.isAlive(i, j) !== alive)
-							diff.push({'x': i, 'y': j, 'alive': alive});
-					}
+					if (wasAlive !== isAlive)
+						diff.push({'i': i, 'alive': isAlive});
 				}
 
 				return diff;
@@ -76,36 +89,41 @@
 			GameState.prototype.apply = function(diff)
 			{
 				for (var i = 0; i < diff.length; ++i)
-					this.setAlive(diff[i].x, diff[i].y, diff[i].alive);
+					this.setAlive(diff[i].i, diff[i].alive);
 			}
 
 			GameState.prototype.randomize = function()
 			{
-				for (var i = 0; i < this.width; ++i)
-					for (var j = 0; j < this.height; ++j)
-						this.setAlive(i, j, Math.random() > 0.8);
+				for (var i = 0; i < this.width * this.height; ++i)
+					this.setAlive(i, Math.random() > 0.8);
 			}
 
-			function render(g, state, cw, ch)
+			GameState.prototype.render = function(g, cw, ch)
 			{
 				g.fillStyle = 'white';
-				g.fillRect(0, 0, cw * state.width, ch * state.height);
+				g.fillRect(0, 0, cw * this.width, ch * this.height);
 
 				g.fillStyle = '#ccc';
 
-				for (var i = 0; i < state.width; ++i)
-					for (var j = 0; j < state.height; ++j)
-						if (state.isAlive(i, j))
-							g.fillRect(i * cw, j * ch, cw, ch);
+				for (var i = 0; i < this.width * this.height; ++i)
+				{
+					if (this.isAlive(i))
+					{
+						var pos = this.getPosition(i);
+						g.fillRect(pos.x * cw, pos.y * ch, cw, ch);
+					}
+				}
 			}
 
-			function renderDiff(g, diff, cw, ch)
+			GameState.prototype.renderDiff = function(g, diff, cw, ch)
 			{
 				for (var i = 0; i < diff.length; ++i)
 				{
-					var cell = diff[i];
+					var cell = diff[i],
+						pos = this.getPosition(cell.i);
+
 					g.fillStyle = cell.alive ? '#ccc' : 'white';
-					g.fillRect(cell.x * cw, cell.y * ch, cw, ch);
+					g.fillRect(pos.x * cw, pos.y * ch, cw, ch);
 				}			
 			}
 
@@ -131,7 +149,7 @@
 
 				window.state = state;
 
-				render(g, state, sx, sy);
+				state.render(g, sx, sy);
 
 				webkitRequestAnimationFrame(renderState);
 			}
