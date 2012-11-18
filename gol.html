@@ -98,10 +98,13 @@
 					this.setAlive(i, Math.random() > 0.8);
 			}
 
-			GameState.prototype.render = function(g, cw, ch)
+			GameState.prototype.render = function(g, w, h)
 			{
+				var cw = Math.round(w / this.width),
+					ch = Math.round(h / this.height);
+
 				g.fillStyle = 'white';
-				g.fillRect(0, 0, cw * this.width, ch * this.height);
+				g.fillRect(0, 0, w, h);
 
 				g.fillStyle = '#ccc';
 
@@ -115,8 +118,11 @@
 				}
 			}
 
-			GameState.prototype.renderDiff = function(g, diff, cw, ch)
+			GameState.prototype.renderDiff = function(g, diff, w, h)
 			{
+				var cw = Math.round(w / this.width),
+					ch = Math.round(h / this.height);
+
 				for (var i = 0; i < diff.length; ++i)
 				{
 					var cell = diff[i],
@@ -145,7 +151,7 @@
 
 				var renderState = function() {
 					if (diff)
-						state.renderDiff(g, diff, sx, sy);
+						state.renderDiff(g, diff, canvas.width, canvas.height);
 
 					diff = null;
 					webkitRequestAnimationFrame(renderState);
@@ -156,7 +162,7 @@
 
 				window.state = state;
 
-				state.render(g, sx, sy);
+				state.render(g, canvas.width, canvas.height);
 
 				webkitRequestAnimationFrame(renderState);
 			}
