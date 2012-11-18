@@ -24,11 +24,6 @@
 				this.buffer = new Array(width * height);
 			}
 
-			GameState.prototype.getIndex = function(x, y)
-			{
-				return y * this.width + x;
-			}
-
 			GameState.prototype.getPosition = function(i)
 			{
 				return {
@@ -50,14 +45,14 @@
 					y = Math.floor(i / w),
 					n = 0;
 
-				if (x>0 && y>0 && this.isAlive(this.getIndex(x-1, y-1))) n++;
-				if (       y>0 && this.isAlive(this.getIndex(x  , y-1))) n++;
-				if (x<w && y>0 && this.isAlive(this.getIndex(x+1, y-1))) n++;
-				if (x>0        && this.isAlive(this.getIndex(x-1, y  ))) n++;
-				if (x<w        && this.isAlive(this.getIndex(x+1, y  ))) n++;
-				if (x>0 && y<h && this.isAlive(this.getIndex(x-1, y+1))) n++;
-				if (       y<h && this.isAlive(this.getIndex(x  , y+1))) n++;
-				if (x<w && y<h && this.isAlive(this.getIndex(x+1, y+1))) n++;
+				if (x > 0 && y > 0 && this.isAlive(i - this.width - 1)) n++;
+				if (         y > 0 && this.isAlive(i - this.width    )) n++;
+				if (x < w && y > 0 && this.isAlive(i - this.width + 1)) n++;
+				if (x > 0          && this.isAlive(i              - 1)) n++;
+				if (x < w          && this.isAlive(i              + 1)) n++;
+				if (x > 0 && y < h && this.isAlive(i + this.width - 1)) n++;
+				if (         y < h && this.isAlive(i + this.width    )) n++;
+				if (x < w && y < h && this.isAlive(i + this.width + 1)) n++;
 
 				return n;
 			}
