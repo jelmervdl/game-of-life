@@ -19,25 +19,6 @@
 		<script>
 			"use strict";
 
-			function Set()
-			{
-				//
-			}
-
-			Set.prototype = new Array();
-
-			Set.prototype.add = function()
-			{
-				this.addAll(arguments);
-			}
-
-			Set.prototype.addAll = function(elements)
-			{
-				for (var i = 0; i < elements.length; ++i)
-					if (this.indexOf(elements[i]) === -1)
-						Array.prototype.push.apply(this, [elements[i]]);
-			}
-
 			function GameState(width, height)
 			{
 				this.width = width;
@@ -154,47 +135,14 @@
 			}
 
 			/* Hexagon modus */
+			// Todo: proper inheritance?
 			var Hexagon = GameState;
-
-			Hexagon.prototype.getNeighbours = function(x, y)
-			{
-				var w = this.width,
-					h = this.height,
-					n = new Array(6);
-
-				n.push({x: x + 1, y: y}, {x: x - 1, y: y});
-
-				if (y % 2 == 0)
-					n.push(
-						{x: x - 1, y: y - 1},
-						{x: x    , y: y - 1},
-						{x: x - 1, y: y + 1},
-						{x: x    , y: y + 1});
-				else
-					n.push(
-						{x: x    , y: y - 1},
-						{x: x + 1, y: y - 1},
-						{x: x    , y: y + 1},
-						{x: x + 1, y: y + 1});
-
-				return n.filter(function(pos) {
-					return pos.x > 0 && pos.x < w
-						&& pos.y > 0 && pos.y < h;
-				});
-			}
 
 			Hexagon.prototype.countLivingNeighbours = function(i)
 			{
 				var pos = this.getPosition(i),
-					dn = this.getNeighbours(pos.x, pos.y),
-					n = new Set(),
+					n = this.getIndirectNeighbours(pos.x, pos.y),
 					living = 0;
-
-				for (var i = 0; i < dn.length; ++i)
-				{
-					n.add(dn[i]);
-					n.addAll(this.getNeighbours(dn[i].x, dn[i].y));
-				}
 
 				for (var i = 0; i < n.length; ++i)
 					if (this.isAlive(n[i].y * this.width + n[i].x))
@@ -237,7 +185,7 @@
 				var n = this.countLivingNeighbours(i),
 					wasAlive = this.isAlive(i);
 				
-				return (wasAlive && n === 3) || n === 5;
+				return (wasAlive && (n === 2 || n === 3)) || n === 4;
 			}
 
 			Hexagon.prototype.renderCell = function(g, i, w, h)
@@ -262,9 +210,77 @@
 				g.lineTo(x + 0, y + a + c);
 				g.closePath();
 				g.fill();
+			}
 
-				g.strokeStyle = 'black';
-				// g.stroke();
+			// Quick tool to get the positions of neighbouring cells
+			function getIndirectNeighbours(x, y)
+			{
+				var getNeighbours = function(x, y)
+				{
+					var n = [{x: x + 1, y: y}, {x: x - 1, y: y}];
+
+					if (y % 2 == 0)
+						n.push(
+							{x: x - 1, y: y - 1},
+							{x: x    , y: y - 1},
+							{x: x - 1, y: y + 1},
+							{x: x    , y: y + 1});
+					else
+						n.push(
+							{x: x    , y: y - 1},
+							{x: x + 1, y: y - 1},
+							{x: x    , y: y + 1},
+							{x: x + 1, y: y + 1});
+
+					return n;
+				}
+
+				var n = getNeighbours(x, y);
+
+				for (var i = 0; i < 6; ++i)
+				{
+					var nn = getNeighbours(n[i].x, n[i].y);
+					for (var j = 0; j < 6; ++j)
+					{
+						var skip = false;
+
+						for (var k = 0; k < n.length; ++k)
+							if (n[k].x == nn[j].x && n[k].y == nn[j].y)
+							{
+								skip = true;
+								break;
+							}
+						
+						if (!skip)
+							n.push(nn[j]);
+					}
+				}
+
+				return n;
+			}
+
+			// Relative indexes of neighbouring cells (taking y % 2 into account)
+			Hexagon.prototype.neighbourIndexes = [
+				new getIndirectNeighbours(0, 0),
+				new getIndirectNeighbours(0, 1).map(function(pos) { return {x: pos.x, y: pos.y - 1}; })
+			];
+
+			Hexagon.prototype.countLivingNeighbours = function(i)
+			{
+				var pos = this.getPosition(i),
+					n = this.neighbourIndexes[pos.y % 2],
+					living = 0;
+
+				for (var i = 0; i < n.length; ++i)
+				{
+					var x = pos.x + n[i].x,
+						y = pos.y + n[i].y;
+
+					if (x >= 0 && x < this.width && y >= 0 && y < this.height && this.isAlive(y * this.width + x))
+						living++;
+				}
+
+				return living;
 			}
 
 			function init()
@@ -272,7 +288,7 @@
 				var canvas = document.getElementById('gol'),
 					g = canvas.getContext('2d'),
 					state,
-					sx = 10, sy = 10,
+					sx = 10, sy = 9,
 					diff = null;
 
 				canvas.width = document.body.clientWidth;
@@ -303,7 +319,6 @@
 
 			init();
 
-			</script>
 		</script>
 	</body>
 </html>
