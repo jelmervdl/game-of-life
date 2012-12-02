@@ -11,7 +11,13 @@ function GameState(width, height)
 
 GameState.prototype.isAlive = function(x, y)
 {
-	var offset = y * this.width + x;
+	if (x >= this.width)
+	{
+		x %= this.width;
+		y++;
+	}
+
+	var offset = (y % this.height) * this.width + x;
 
 	// return this.view[offset / 8 | 0] & (1 << offset % 8);
 	return this.buffer[offset] == true;
@@ -19,6 +25,12 @@ GameState.prototype.isAlive = function(x, y)
 
 GameState.prototype.setAlive = function(x, y, alive)
 {
+	if (x >= this.width)
+	{
+		x %= this.width;
+		y++;
+	}
+	
 	var offset = y * this.width + x;
 
 	// if (alive)
@@ -39,14 +51,14 @@ GameState.prototype.next = function()
 		for (var j = 0; j < h; ++j)
 		{
 			var n = 0;
-			if (i>0 && j>0 && this.isAlive(i-1, j-1)) n++;
-			if (       j>0 && this.isAlive(i  , j-1)) n++;
-			if (i<w && j>0 && this.isAlive(i+1, j-1)) n++;
-			if (i>0        && this.isAlive(i-1, j  )) n++;
-			if (i<w        && this.isAlive(i+1, j  )) n++;
-			if (i>0 && j<h && this.isAlive(i-1, j+1)) n++;
-			if (       j<h && this.isAlive(i  , j+1)) n++;
-			if (i<w && j<h && this.isAlive(i+1, j+1)) n++;
+			if (this.isAlive(i-1, j-1)) n++;
+			if (this.isAlive(i  , j-1)) n++;
+			if (this.isAlive(i+1, j-1)) n++;
+			if (this.isAlive(i-1, j  )) n++;
+			if (this.isAlive(i+1, j  )) n++;
+			if (this.isAlive(i-1, j+1)) n++;
+			if (this.isAlive(i  , j+1)) n++;
+			if (this.isAlive(i+1, j+1)) n++;
 
 			var alive = (this.isAlive(i, j) && n == 2) || n == 3;
 
